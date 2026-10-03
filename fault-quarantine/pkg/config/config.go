@@ -90,6 +90,13 @@ type ValidationConfig struct {
 	TemplateMountPath string              `toml:"templateMountPath"`
 	TemplateFileName  string              `toml:"templateFileName"`
 	RuleSets          []ValidationRuleSet `toml:"ruleSets"`
+	// PartialDrainEnabled must match node-drainer's partialDrainEnabled. Unset means true.
+	PartialDrainEnabled *bool `toml:"partialDrainEnabled"`
+}
+
+// IsPartialDrainEnabled defaults to true when unset.
+func (c ValidationConfig) IsPartialDrainEnabled() bool {
+	return c.PartialDrainEnabled == nil || *c.PartialDrainEnabled
 }
 
 type TomlConfig struct {

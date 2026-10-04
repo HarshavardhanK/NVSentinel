@@ -82,6 +82,7 @@ data:
       resource = {{ printf "%ss" (.Values.validation.kind | lower) | quote }}
       templateFileName = {{ .Values.validation.templateFileName | quote }}
       templateMountPath = "/etc/config"
+      retainTaints = {{ .Values.validation.retainTaints | default false }}
 
     {{- range .Values.validation.ruleSets }}
     [[validation.ruleSets]]

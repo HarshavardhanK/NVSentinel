@@ -1824,6 +1824,95 @@ func TestE2E_ValidationRequestCreatedWhenEventDrained(t *testing.T) {
 		"nvsentinel-state label should be removed")
 }
 
+func TestE2E_RetainTaints(t *testing.T) {
+	tests := []struct {
+		name    string
+		drained bool
+	}{
+		{name: "validation requested keeps taints", drained: true},
+		{name: "validation skipped removes taints", drained: false},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			ctx, cancel := context.WithTimeout(e2eTestContext, 20*time.Second)
+			defer cancel()
+
+			nodeName := "e2e-retain-taints-" + generateShortTestID()
+			createE2ETestNode(ctx, t, nodeName, nil, nil, nil, false)
+			defer func() {
+				_ = e2eTestClient.CoreV1().Nodes().Delete(ctx, nodeName, metav1.DeleteOptions{})
+			}()
+
+			t.Cleanup(func() {
+				_ = e2eTestDynamicClient.Resource(validationRequestGVR).DeleteCollection(
+					context.Background(), metav1.DeleteOptions{}, metav1.ListOptions{})
+			})
+
+			validation := validationConfig([]config.ValidationRuleSet{
+				{
+					Enabled: true, Name: "dcgm-diag", Version: "1",
+					Match: config.Match{Any: []config.Rule{
+						{Kind: "HealthEvent", Expression: "event.checkName == 'GpuXidError'"},
+					}},
+					Tests: []string{"dcgm-diag-test"},
+				},
+			})
+			validation.RetainTaints = true
+
+			tomlConfig := config.TomlConfig{
+				LabelPrefix: "k8s.nvidia.com/",
+				RuleSets: []config.QuarantineRuleSet{
+					{
+						Enabled: true, Name: "gpu-xid-critical", Version: "1",
+						Match: config.Match{Any: []config.Rule{
+							{Kind: "HealthEvent", Expression: "event.checkName == 'GpuXidError' && event.isFatal == true"},
+						}},
+						Taint: config.Taint{Key: "nvidia.com/gpu-xid-error", Value: "true", Effect: "NoSchedule"},
+					},
+				},
+				Validation: validation,
+			}
+
+			_, mockWatcher, _, _ := setupE2EReconcilerWithOptions(t, ctx, E2EReconcilerConfig{
+				TomlConfig:       tomlConfig,
+				HealthEventStore: mockHealthEventStoreWithDrainStatus(t, tc.drained),
+			})
+
+			mockWatcher.EventsChan <- &TestEvent{Data: createHealthEventBSON(
+				generateTestID(), nodeName, "GpuXidError", false, true,
+				[]*protos.Entity{{EntityType: "GPU", EntityValue: "0"}}, model.StatusInProgress,
+			)}
+			require.Eventually(t, func() bool {
+				node, err := e2eTestClient.CoreV1().Nodes().Get(ctx, nodeName, metav1.GetOptions{})
+				return err == nil && node.Annotations[common.QuarantineHealthEventAppliedTaintsAnnotationKey] != ""
+			}, eventuallyTimeout, eventuallyPollInterval, "Node should be quarantined with a taint")
+
+			mockWatcher.EventsChan <- &TestEvent{Data: createHealthEventBSON(
+				generateTestID(), nodeName, "GpuXidError", true, false,
+				[]*protos.Entity{{EntityType: "GPU", EntityValue: "0"}}, model.StatusInProgress,
+			)}
+			require.Eventually(t, func() bool {
+				node, err := e2eTestClient.CoreV1().Nodes().Get(ctx, nodeName, metav1.GetOptions{})
+				return err == nil && node.Annotations[common.QuarantineHealthEventAnnotationKey] == ""
+			}, eventuallyTimeout, eventuallyPollInterval, "Quarantine annotation should be removed")
+
+			node, err := e2eTestClient.CoreV1().Nodes().Get(ctx, nodeName, metav1.GetOptions{})
+			require.NoError(t, err)
+			assert.False(t, node.Spec.Unschedulable)
+			assert.Empty(t, node.Annotations[common.QuarantineHealthEventAppliedTaintsAnnotationKey])
+
+			if tc.drained {
+				assert.Len(t, listValidationRequestTests(ctx, t, nodeName), 1)
+				verifyFQTaintPresent(t, node, "nvidia.com/gpu-xid-error")
+			} else {
+				assert.Empty(t, listValidationRequestTests(ctx, t, nodeName))
+				verifyFQTaintAbsent(t, node, "nvidia.com/gpu-xid-error")
+			}
+		})
+	}
+}
+
 func TestE2E_ValidationRequestCreationFailureKeepsNodeQuarantined(t *testing.T) {
 	ctx, cancel := context.WithTimeout(e2eTestContext, 20*time.Second)
 	defer cancel()

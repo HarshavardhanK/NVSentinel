@@ -280,6 +280,8 @@ validation:
   version: "v1alpha1"
   kind: "ValidationRequest"
   templateFileName: "validation-request-template.yaml"
+  # Keep quarantine taints during validation; list them in lifecycle-manager schedulingGate.taints.
+  retainTaints: false
   templates:
     "validation-request-template.yaml": |
       apiVersion: nvsentinel.nvidia.com/v1alpha1

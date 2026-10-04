@@ -1930,6 +1930,11 @@ func (r *Reconciler) performUncordon(
 		return true, err
 	}
 
+	if validationRequestCreated && r.config.TomlConfig.Validation.RetainTaints {
+		span.SetAttributes(attribute.Int("fault_quarantine.taints.retained", len(taintsToBeRemoved)))
+		taintsToBeRemoved = nil
+	}
+
 	if !r.config.CircuitBreakerEnabled {
 		slog.InfoContext(ctx, "Circuit breaker is disabled, proceeding with unquarantine action for node",
 			"node", event.NodeName)
@@ -1985,8 +1990,8 @@ func (r *Reconciler) buildUncordonLabelsToRemove(ruleLabelsToRemove []config.Lab
 // annotation present when it is being unquarantined. Note that we also require that the node was fully drained
 // as part of its quarantine session so it's possible that ValidationRequest creation is skipped even if the
 // annotation present. If a ValidationRequest is created, we will skip removing the cordon, skip removing the
-// cordon-by labels, and skip adding the uncordon-by labels. Note that taints are still removed regardless of whether
-// a ValidationRequest was created.
+// cordon-by labels, and skip adding the uncordon-by labels. Taints are still removed unless validation.retainTaints
+// is set.
 //
 // If a ValidationRequest creation fails, the node will not be uncordoned or untainted and all fault-quarantine labels
 // and annotations will be preserved.

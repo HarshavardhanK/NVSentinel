@@ -343,7 +343,7 @@ status:
 | templateFileName | string | The filename of the Go text/template, resolved from templates, rendered to build the ValidationRequest |
 | templates | map[string]string | Inline template content, keyed by filename |
 | ruleSets | []RuleSet | Maps HealthEvents from a quarantine session to the tests they require |
-| retainTaints | bool | Keep the session's quarantine taints when a ValidationRequest is created, as the cordon is kept. List each taint in lifecycle-manager schedulingGate.taints with remove set to true so it is lifted when validation passes, and keep the not-under-quarantine readiness criterion so a new quarantine fails the pending validation instead of releasing the node. Default false |
+| retainTaints | bool | Keep the session's quarantine taints when a ValidationRequest is created, as the cordon is kept. List each taint in lifecycle-manager schedulingGate.taints with remove set to true so it is lifted when validation passes, and keep the not-under-quarantine readiness criterion so a new quarantine fails the pending validation instead of releasing the node. Use remove set to true only for taints that fault-quarantine alone applies: a taint that was on the node before the quarantine is not fault-quarantine's, and lifecycle-manager would lift it too. Default false |
 
 ### fault-quarantine.validation.ruleSets
 

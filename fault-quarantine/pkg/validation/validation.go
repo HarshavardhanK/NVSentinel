@@ -103,7 +103,7 @@ func NewValidationClient(cfg config.TomlConfig, k8sClient *informer.FaultQuarant
 		healthEventStore:          healthEventStore,
 		resourceTemplate:          validationTemplate,
 		resourceGVR:               gvr,
-		partialDrainEnabled:       cfg.Validation.IsPartialDrainEnabled(),
+		partialDrainEnabled:       cfg.Validation.PartialDrainEnabled,
 	}, nil
 }
 
@@ -257,7 +257,8 @@ func (c *ValidationClient) FetchValidationTestsFromQuarantineSession(ctx context
 		}
 	}
 
-	isDrained, err := drain.IsNodeDrained(ctx, c.healthEventStore, nodeName, events, "", nil, c.partialDrainEntity)
+	isDrained, err := drain.IsNodeDrained(ctx, c.healthEventStore, nodeName, events, "", nil,
+		c.partialDrainEnabled)
 	if err != nil {
 		return nil, "", fmt.Errorf("failed to look up drain status for node %s: %w", nodeName, err)
 	}
@@ -272,15 +273,6 @@ func (c *ValidationClient) FetchValidationTestsFromQuarantineSession(ctx context
 	sort.Strings(eventIDs)
 
 	return tests, sessionID(eventIDs), nil
-}
-
-// partialDrainEntity infers drain scope using node-drainer's current policy.
-func (c *ValidationClient) partialDrainEntity(healthEvent *protos.HealthEvent) (*protos.Entity, error) {
-	if !c.partialDrainEnabled {
-		return nil, nil
-	}
-
-	return drain.PartialDrainEntity(healthEvent)
 }
 
 func (c *ValidationClient) CreateValidationRequest(ctx context.Context, node *corev1.Node, tests []string, sessionID,

@@ -1559,6 +1559,8 @@ func TestE2E_ValidationRequestSkippedWhenDrainIsPartial(t *testing.T) {
 		}),
 	}
 
+	tomlConfig.Validation.PartialDrainEnabled = true
+
 	_, mockWatcher, getStatus, _ := setupE2EReconcilerWithOptions(t, ctx, E2EReconcilerConfig{
 		TomlConfig:       tomlConfig,
 		HealthEventStore: mockHealthEventStoreWithDrainedComponentResetEvent(t, "GPU_UUID", "GPU-0"),
@@ -1642,8 +1644,6 @@ func TestE2E_ValidationRequestCreatedWhenComponentResetEventFullyDrained(t *test
 			},
 		}),
 	}
-
-	tomlConfig.Validation.PartialDrainEnabled = new(bool)
 
 	_, mockWatcher, _, _ := setupE2EReconcilerWithOptions(t, ctx, E2EReconcilerConfig{
 		TomlConfig:       tomlConfig,

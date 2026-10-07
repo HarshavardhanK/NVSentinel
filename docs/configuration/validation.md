@@ -118,7 +118,7 @@ fault-quarantine:
 
 The default ruleset creates a ValidationRequest which runs dcgm-diag-test against any unquarantined node that had an unhealthy event requiring a VM or BM restart remediation during its quarantine session.
 
-A ValidationRequest is only created if at least one event from the quarantine session completed a full drain, so validation tests do not run while workloads that node-drainer would evict are still on the node. By default, fault-quarantine assumes node-drainer drains COMPONENT_RESET events partially (only the pods using the impacted GPU), so their drains never count as full drains. If partial drain is disabled in node-drainer (for example, because COMPONENT_RESET is remediated with a reboot), set `global.partialDrainEnabled: false` (or `fault-quarantine.validation.partialDrainEnabled: false`) so a completed drain of a COMPONENT_RESET event can trigger validation; a validation ruleset must also match the event, and the default ruleset does not match COMPONENT_RESET. Change this together with node-drainer's setting, after open quarantine sessions finish: fault-quarantine judges each event by the current value, so an event drained partially before the change may count as a full drain after it. See [Partial Drain](node-drainer.md#partial-drain).
+A ValidationRequest is only created if at least one event from the quarantine session completed a full drain, so validation tests do not run while workloads that node-drainer would evict are still on the node. `fault-quarantine.validation.partialDrainEnabled` tells fault-quarantine whether node-drainer drains COMPONENT_RESET events partially (only the pods using the impacted GPU). It defaults to `false`, the same as `node-drainer.partialDrainEnabled`, so a completed drain of a COMPONENT_RESET event counts as a full drain and can trigger validation; a validation ruleset must also match the event, and the default ruleset does not match COMPONENT_RESET. If partial drain is enabled in node-drainer, set `fault-quarantine.validation.partialDrainEnabled: true` as well (or set `global.partialDrainEnabled: true`, which overrides both), so a partial drain never counts as a full drain. Change this together with node-drainer's setting, after open quarantine sessions finish: fault-quarantine judges each event by the current value, so an event drained partially before the change may count as a full drain after it. See [Partial Drain](node-drainer.md#partial-drain).
 
 ## Enabling NVCRE Validation
 
@@ -345,7 +345,7 @@ status:
 | templateFileName | string | The filename of the Go text/template, resolved from templates, rendered to build the ValidationRequest |
 | templates | map[string]string | Inline template content, keyed by filename |
 | ruleSets | []RuleSet | Maps HealthEvents from a quarantine session to the tests they require |
-| partialDrainEnabled | bool | Must match node-drainer partialDrainEnabled. When false, a completed drain of a COMPONENT_RESET event counts as a full drain. Defaults to true. Set both with global.partialDrainEnabled |
+| partialDrainEnabled | bool | Must match node-drainer partialDrainEnabled. When false, a completed drain of a COMPONENT_RESET event counts as a full drain. Defaults to false. Set both with global.partialDrainEnabled |
 
 ### fault-quarantine.validation.ruleSets
 

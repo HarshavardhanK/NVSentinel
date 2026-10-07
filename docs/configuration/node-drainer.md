@@ -81,11 +81,11 @@ node-drainer:
   partialDrainEnabled: true
 ```
 
-Post-remediation validation in fault-quarantine needs to know whether an event was drained partially. `fault-quarantine.validation.partialDrainEnabled` defaults to `true`, so a COMPONENT_RESET event's drain never counts as a full drain. If you keep partial drain disabled and want validation after COMPONENT_RESET remediations, set `global.partialDrainEnabled`, which overrides both subchart values:
+Post-remediation validation in fault-quarantine needs to know whether an event was drained partially. `fault-quarantine.validation.partialDrainEnabled` defaults to `false`, the same as this setting. If you enable partial drain here, enable it there too so a partial drain never counts as a full drain, or set `global.partialDrainEnabled`, which overrides both subchart values:
 
 ```yaml
 global:
-  partialDrainEnabled: false
+  partialDrainEnabled: true
 ```
 
 ### Partial Drain Entity Metric

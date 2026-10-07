@@ -1813,11 +1813,13 @@ func TestE2E_ValidationRequestCreatedWhenEventDrained(t *testing.T) {
 	}, eventuallyTimeout, eventuallyPollInterval, "A ValidationRequest should be created")
 	assert.ElementsMatch(t, []string{"dcgm-diag-test", "nccl-test"}, listValidationRequestTests(ctx, t, nodeName)[0])
 
-	t.Log("Verify the node stays cordoned pending validation, but its taints are removed")
+	t.Log("Verify the node stays cordoned and tainted pending validation")
 	node, err := e2eTestClient.CoreV1().Nodes().Get(ctx, nodeName, metav1.GetOptions{})
 	require.NoError(t, err)
 	assert.True(t, node.Spec.Unschedulable, "Node should stay unschedulable pending validation")
-	verifyFQTaintAbsent(t, node, "nvidia.com/gpu-xid-error")
+	verifyFQTaintPresent(t, node, "nvidia.com/gpu-xid-error")
+	assert.Empty(t, node.Annotations[common.QuarantineHealthEventAppliedTaintsAnnotationKey],
+		"Applied-taints annotation should be cleared once the ValidationRequest is created")
 	assert.Empty(t, node.Annotations[common.QuarantineValidationHealthEventAnnotationKey],
 		"Validation-session annotation should be cleared once the ValidationRequest is created")
 
@@ -1832,13 +1834,13 @@ func TestE2E_ValidationRequestCreatedWhenEventDrained(t *testing.T) {
 		"nvsentinel-state label should be removed")
 }
 
-func TestE2E_RetainTaints(t *testing.T) {
+func TestE2E_ValidationRequestCreationKeepsTaints(t *testing.T) {
 	tests := []struct {
 		name    string
 		drained bool
 	}{
-		{name: "validation requested keeps taints", drained: true},
-		{name: "validation skipped removes taints", drained: false},
+		{name: "ValidationRequest created keeps taints", drained: true},
+		{name: "ValidationRequest skipped removes taints", drained: false},
 	}
 
 	for _, tc := range tests {
@@ -1846,7 +1848,7 @@ func TestE2E_RetainTaints(t *testing.T) {
 			ctx, cancel := context.WithTimeout(e2eTestContext, 20*time.Second)
 			defer cancel()
 
-			nodeName := "e2e-retain-taints-" + generateShortTestID()
+			nodeName := "e2e-validation-taints-" + generateShortTestID()
 			createE2ETestNode(ctx, t, nodeName, nil, nil, nil, false)
 			defer func() {
 				_ = e2eTestClient.CoreV1().Nodes().Delete(ctx, nodeName, metav1.DeleteOptions{})
@@ -1866,7 +1868,6 @@ func TestE2E_RetainTaints(t *testing.T) {
 					Tests: []string{"dcgm-diag-test"},
 				},
 			})
-			validation.RetainTaints = true
 
 			tomlConfig := config.TomlConfig{
 				LabelPrefix: "k8s.nvidia.com/",

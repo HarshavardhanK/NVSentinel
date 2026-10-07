@@ -90,8 +90,6 @@ type ValidationConfig struct {
 	TemplateMountPath string              `toml:"templateMountPath"`
 	TemplateFileName  string              `toml:"templateFileName"`
 	RuleSets          []ValidationRuleSet `toml:"ruleSets"`
-	// RetainTaints leaves quarantine taints for lifecycle-manager schedulingGate.taints to remove.
-	RetainTaints bool `toml:"retainTaints"`
 }
 
 type TomlConfig struct {

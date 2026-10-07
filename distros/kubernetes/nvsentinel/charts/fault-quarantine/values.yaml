@@ -270,7 +270,9 @@ ruleSets:
 
 # The validation section configures post-remediation validation from the fault-quarantine
 # module. If enabled, fault-quarantine will preserve the scheduling gate on a given node
-# when an unquarantine event occurs, and it will create the given validation resource
+# (the cordon and the taints it applied) when an unquarantine event occurs, so every taint
+# a ruleSet above applies must be listed in lifecycle-manager config.schedulingGate.taints
+# with remove set to true. fault-quarantine will also create the given validation resource
 # for the requested tests. The list of test is derived from the unhealthy events which
 # occurred during the quarantine session and these tests are derived from the ruleSets
 # section below.
@@ -280,8 +282,6 @@ validation:
   version: "v1alpha1"
   kind: "ValidationRequest"
   templateFileName: "validation-request-template.yaml"
-  # Keep quarantine taints during validation; list them in lifecycle-manager schedulingGate.taints.
-  retainTaints: false
   templates:
     "validation-request-template.yaml": |
       apiVersion: nvsentinel.nvidia.com/v1alpha1

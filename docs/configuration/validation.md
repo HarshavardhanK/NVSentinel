@@ -343,7 +343,8 @@ status:
 | templateFileName | string | The filename of the Go text/template, resolved from templates, rendered to build the ValidationRequest |
 | templates | map[string]string | Inline template content, keyed by filename |
 | ruleSets | []RuleSet | Maps HealthEvents from a quarantine session to the tests they require |
-| retainTaints | bool | Keep the session's quarantine taints when a ValidationRequest is created, as the cordon is kept. List each taint in lifecycle-manager schedulingGate.taints with remove set to true so it is lifted when validation passes, and keep the not-under-quarantine readiness criterion so a new quarantine fails the pending validation instead of releasing the node. Use remove set to true only for taints that fault-quarantine alone applies: a taint that was on the node before the quarantine is not fault-quarantine's, and lifecycle-manager would lift it too. Default false |
+
+When fault-quarantine creates a ValidationRequest, it keeps the cordon and every taint it applied during the quarantine session, and it stops tracking them. lifecycle-manager releases them when validation passes. Every taint that a fault-quarantine rule-set applies must therefore be listed in lifecycle-manager schedulingGate.taints with remove set to true. A taint that is not listed is not tolerated by the test pods, so validation cannot run on the node, and it is never removed. Keep the not-under-quarantine readiness criterion so a new quarantine fails the pending validation instead of releasing the node. Use remove set to true only for taints that fault-quarantine alone applies: lifecycle-manager matches on key, value, and effect, so it also lifts a matching taint that was on the node before the quarantine. When no ValidationRequest is created, fault-quarantine removes its taints itself.
 
 ### fault-quarantine.validation.ruleSets
 

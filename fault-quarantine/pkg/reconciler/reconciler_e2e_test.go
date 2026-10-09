@@ -1691,11 +1691,15 @@ func TestE2E_ValidationRequestCreatedWhenComponentResetEventFullyDrained(t *test
 		return err == nil && node.Annotations[common.QuarantineHealthEventAnnotationKey] == ""
 	}, eventuallyTimeout, eventuallyPollInterval, "Quarantine annotation should be removed")
 
-	t.Log("Verify the node stays cordoned pending validation")
+	t.Log("Verify the node stays cordoned and tainted pending validation")
 	node, err := e2eTestClient.CoreV1().Nodes().Get(ctx, nodeName, metav1.GetOptions{})
 	require.NoError(t, err)
 	assert.True(t, node.Spec.Unschedulable, "Node should stay unschedulable pending validation")
-	verifyFQTaintAbsent(t, node, "nvidia.com/gpu-xid-error")
+	verifyFQTaintPresent(t, node, "nvidia.com/gpu-xid-error")
+	assert.Empty(t, node.Annotations[common.QuarantineHealthEventAppliedTaintsAnnotationKey],
+		"Applied-taints annotation should be cleared once the ValidationRequest is created")
+	assert.Empty(t, node.Annotations[common.QuarantineValidationHealthEventAnnotationKey],
+		"Validation-session annotation should be cleared once the ValidationRequest is created")
 }
 
 func TestE2E_ValidationRequestSkippedWhenNoEventDrained(t *testing.T) {
